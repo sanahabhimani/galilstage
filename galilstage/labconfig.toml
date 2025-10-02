@@ -1,0 +1,73 @@
+# Configuration file for testing optics controller
+
+# Make sure all values have the correct type, strings need quotes.
+
+[userinterface]
+    # Greeting - displayed upon startup
+    greeting = "Hello FTS-SAT observer! type 'help' for help, <enter> for latest messages"
+    # Filepathname for text of help message
+    helpfile = "../support/controller_help.txt"
+
+# Logging settings
+[logging]
+    # Filepathname of logfile to write
+    logfile = "../../controlog.txt"
+    # Logport
+    port = 50773
+    # Loglevel for user interface (for file level is always DEBUG)
+    level = "INFO"
+    # Default logger for port messages
+    deflogger = "PortLogger"
+    
+[socketinterface]
+    port = 50747
+
+[galil]
+    # Flag to indicate simulating galil (true/false)
+    simulategalil = false
+    # Flag to force log of all communications with galil
+    verbose = true
+    # waittime - how long to sleep between sending and receiving command (s)
+    waittime = 0.01
+    # comtype: communication type can be 'serial' (default) or 'telnet'
+    comtype = "serial"
+    # serial device if comtype == serial
+    #     Device for Marc's mac
+    # device = "/dev/tty.usbserial-11220" 
+    device = "/dev/tty.usbserial-10"#"COM5"
+    #     Device for linux
+    #device = /dev/ttyUSB0
+    # baud rate if comtype == serial
+    baud = 115200
+    # ip host address if comtype == telnet
+    host = "192.168.2.4"
+    # port number if comtype == telnet
+    port = 23
+    # configure commands
+    #confcomm = "MO;CE;TP;AGA=1;TLA=7.7;TKA=9.9;OEA=1;ERA=6400;ACA=2048;DCA=4096;SPA=20000;JGA=50000"
+    #confcomm = "MTE=1;LDE=3;AGE=0;TLE=2.0;ERE=2000;OEE=1;ACE=2048;DCE=2048;SPE=8192"
+    #confcomm = "MTA=1;AGA=1;TLA=9.99; AUA=9; OE=1; BAA; BMA=3276.8; ACA=2048; DCA=2048; SPA=8192; MTB=1;AGB=1;TLB=9.99; AUB=9; BAB; BMB=3276.8; ACB=2048; DCB=2048; SPB = 8192"
+    confcomm = "MTA=1;OEA=0;AGA=2;TLA=5;AUA=9;BAA;BMA=3276.8;MTB=1;OEB=0;AGB=2;TLB=5;AUB=9;BAB;BMB=3276.8;MTC=1;OEC=0;AGC=2;TLC=5;AUC=9;BAC;BMC=3276.8;MTD=1;OED=0;AGD=2;TLD=5;AUD=9;BAD;BMD=3276.8;BZ <1000>1500"
+    # init commands: initializes the motor
+    # initcomm = "" # BAA;BMA=6400;BXA=-4"
+    initcommA = "BZA=3"
+    initcommB = "BZB=3"
+    initcommC = "BZC=3"
+    initcommD = "BZD=3"
+    # Axis designations (space separated list of upper case characters)
+    linaxis = "A B"
+    angaxis = "C D"
+    # Digital outputs for brakes (space separated list of integers)
+    linbrakes = "1 2"
+    angbrakes = "3 4"
+    # Maximal speed for motors (in motor counts)
+    maxspeed = 100000.0
+    # data values to check regularly and log
+    datavals = "_TPA _TEA _TTA _TVA _TPB _TPC _TPD _LFA _LRA _MOA _TPA _TVA"
+    # datainterval (seconds) - how often to take data (also acts as communication check)
+    datainterval = 20.0 # 0.1
+    # Command presets
+    comm1 = "MG _KIA,_KPA,_KDA"
+    # Encoder counts per distance / angle
+    cntspermm = 4000.0
+    cntsperdeg = 2000.0
