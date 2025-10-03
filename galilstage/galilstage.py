@@ -1,23 +1,33 @@
 import serial
 import time
 import toml
+import socket
 
 class GalilStage:
-    def __init__(self, config_file, port='/dev/ttyUSB0', baudrate=9600, timeout=1):
+    def __init__(self, config_file,ip_address=None, port=23, timeout=3): #  port='/dev/ttyUSB0',
         """Initialize GalilStage with config file and comm settings."""
+        self.ip_address = ip_address
         self.port = port
-        self.baudrate = baudrate
         self.timeout = timeout
-        self.ser = None
+        self.sock = None
+        self.config_file = config_file
 
         # Load galil config immediately
         full_config = toml.load(config_file)
         if 'galil' not in full_config:
             raise ValueError(f"[galil] section not found in {config_file}")
         self.config = full_config['galil']
-        print(f"Loaded config from {config_file}")
 
     def connect(self):
+        """Establish TCP connection to Galil controller."""
+        if self.ip_address:
+            self.sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+            self.sock.connect((self.ip_address, self.port))
+            #self.sock.settimeout(2.0)  # optional
+        if self.sock:
+            f"Connected to Galil at {self.ip_address}:{self.port}"
+
+    def connect_serial(self):
         """Open serial connection."""
         if self.ser and self.ser.is_open:
             print("Already connected.")
@@ -25,21 +35,16 @@ class GalilStage:
         self.ser = serial.Serial(self.port, self.baudrate, timeout=self.timeout)
         print(f"Connected to Galil on {self.port}")
 
-    def disconnect(self):
-        """Close serial connection."""
-        if self.ser:
-            self.ser.close()
-            print("Disconnected.")
-            self.ser = None
-
-    def send_command(self, cmd, wait=0.05):
-        """Send command string to Galil and return response."""
-        if not self.ser or not self.ser.is_open:
-            raise RuntimeError("Not connected to Galil")
-        self.ser.write((cmd.strip() + '\r').encode())
-        time.sleep(wait)
-        resp = self.ser.read(1000).decode(errors='ignore').strip()
-        return resp
+    def close(self):
+        if hasattr(self, "sock") and self.sock:
+            self.sock.close()
+            self.sock = None
+ 
+    def send_command(self, cmd):
+        if not self.sock:
+            raise RuntimeError("Not connected to Galil.")
+        self.sock.sendall((cmd + "\r").encode("ascii"))
+        return self.sock.recv(1024).decode("ascii", errors="ignore")
 
     def command_config(self):
         """Send all relevant Galil config commands from loaded TOML."""
@@ -53,10 +58,10 @@ class GalilStage:
         time.sleep(2)
 
         # 2. Per-axis init commands
-        for axis in ['A', 'B', 'C', 'D']:
-            self.initialize_axis(axis)
-            print(f"Initialized axis {axis}, sleeping for 2 secs...")
-            time.sleep(2)
+        #for axis in ['A', 'B', 'C', 'D']:
+        #    self.initialize_axis(axis)
+        #    print(f"Initialized axis {axis}, sleeping for 2 secs...")
+        #    time.sleep(5)
 
         # 3. Optional maxspeed
         if 'maxspeed' in self.config:
@@ -67,24 +72,14 @@ class GalilStage:
             for a in self.config.get('angaxis', '').split():
                 comm += f"SP{a}={maxspeed};"
             if comm:
+                comm = comm.rstrip(';')  # trim trailing semicolon
                 print(f"Setting maxspeed: {comm}")
-                self.send_command(comm[:-1])
-
-        print("Config commands sent.")
-        return True
+                self.send_command(comm)
 
     def initialize_axis(self, axis, volts=3):
         """Use BZ command to initialize axis."""
         cmd = f"BZ{axis}={volts}"
         return self.send_command(cmd)
-
-
-    def send_command(self, cmd):
-        if not self.ser or not self.ser.is_open:
-            raise RuntimeError("Not connected.")
-        self.ser.write((cmd.strip() + '\r').encode())
-        resp = self.ser.read(1000).decode().strip()
-        return resp
 
     # ---- Convenience wrappers ----
     def move_absolute(self, axis, pos):
@@ -112,9 +107,13 @@ class GalilStage:
         cmd = f"TP {axis}"
         return self.send_command(cmd)
 
-    def enable_axis(self, axis):
+    def enable_axis(self, axis=None):
         """Enable servo for an axis (e.g. A, B, C, D)."""
-        return self.send_command(f"SH{axis}")
+        if axis is None:
+            cmd = 'SH'
+        else:
+            cmd = f'{SH}{axis}'
+        return self.send_command(cmd)
 
     def disable_axis(self, axis):
         """Motor off for an axis."""
@@ -131,7 +130,7 @@ class GalilStage:
 
     def jog_axis(self, axis, speed):
         """Set jog speed for axis and begin jogging."""
-        cmd = f"JG{axis}={speed}")
+        cmd = f"JG{axis}={speed}"
         return self.send_command(cmd)
 
     def query_status(self, code):
